@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE hibernate-configuration PUBLIC
+        "-//Hibernate/Hibernate Configuration DTD 3.0//EN"
+        "http://www.hibernate.org/dtd/hibernate-configuration-3.0.dtd">
+
+<hibernate-configuration>
+    <session-factory>
+        <!-- H2 Database connection settings for testing -->
+        <property name="hibernate.connection.driver_class">org.h2.Driver</property>
+        <property name="hibernate.connection.url">jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE</property>
+        <property name="hibernate.connection.username">sa</property>
+        <property name="hibernate.connection.password"></property>
+        
+        <!-- Connection pool settings -->
+        <property name="hibernate.connection.pool_size">5</property>
+        <property name="hibernate.connection.autocommit">false</property>
+        
+        <!-- SQL dialect -->
+        <property name="hibernate.dialect">org.hibernate.dialect.H2Dialect</property>
+        
+        <!-- Echo all executed SQL to stdout -->
+        <property name="hibernate.show_sql">true</property>
+        <property name="hibernate.format_sql">true</property>
+        
+        <!-- Hibernate cache settings -->
+        <property name="hibernate.cache.use_second_level_cache">false</property>
+        <property name="hibernate.cache.use_query_cache">false</property>
+        
+        <!-- Auto-create/update database schema -->
+        <property name="hibernate.hbm2ddl.auto">create-drop</property>
+        
+        <!-- Transaction management -->
+        <property name="hibernate.current_session_context_class">thread</property>
+        
+        <!-- Logging -->
+        <property name="hibernate.jdbc.lob.non_contextual_creation">true</property>
+        
+        <!-- Mapping classes -->
+        <mapping class="com.example.userservice.entity.User"/>
+        
+    </session-factory>
+</hibernate-configuration>

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE hibernate-configuration PUBLIC
+        "-//Hibernate/Hibernate Configuration DTD 3.0//EN"
+        "http://www.hibernate.org/dtd/hibernate-configuration-3.0.dtd">
+
+<hibernate-configuration>
+    <session-factory>
+        <!-- Database connection settings -->
+        <property name="hibernate.connection.driver_class">org.postgresql.Driver</property>
+        <property name="hibernate.connection.url">jdbc:postgresql://localhost:5432/user_service_db</property>
+        <property name="hibernate.connection.username">postgres</property>
+        <property name="hibernate.connection.password">password</property>
+        
+        <!-- Connection pool settings -->
+        <property name="hibernate.connection.pool_size">10</property>
+        <property name="hibernate.connection.autocommit">false</property>
+        
+        <!-- SQL dialect -->
+        <property name="hibernate.dialect">org.hibernate.dialect.PostgreSQLDialect</property>
+        
+        <!-- Echo all executed SQL to stdout -->
+        <property name="hibernate.show_sql">true</property>
+        <property name="hibernate.format_sql">true</property>
+        
+        <!-- Hibernate cache settings -->
+        <property name="hibernate.cache.use_second_level_cache">false</property>
+        <property name="hibernate.cache.use_query_cache">false</property>
+        
+        <!-- Auto-create/update database schema -->
+        <property name="hibernate.hbm2ddl.auto">update</property>
+        
+        <!-- Jakarta EE compatibility -->
+        <property name="hibernate.allow_jdbc_metadata_access">false</property>
+        
+        <!-- Transaction management -->
+        <property name="hibernate.current_session_context_class">thread</property>
+        
+        <!-- Logging -->
+        <property name="hibernate.jdbc.lob.non_contextual_creation">true</property>
+        
+        <!-- Mapping classes -->
+        <mapping class="com.example.userservice.entity.User"/>
+        
+    </session-factory>
+</hibernate-configuration>
