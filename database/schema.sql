@@ -31,3 +31,4 @@ ON CONFLICT (email) DO NOTHING;
 -- Grant permissions (if using separate user)
 -- GRANT ALL PRIVILEGES ON TABLE users TO user_service_user;
 -- GRANT USAGE, SELECT ON SEQUENCE users_id_seq TO user_service_user;
+

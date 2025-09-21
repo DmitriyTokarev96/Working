@@ -36,3 +36,4 @@ if %ERRORLEVEL% NEQ 0 (
 echo.
 echo Application finished
 pause
+

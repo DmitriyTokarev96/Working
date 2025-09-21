@@ -2,6 +2,7 @@ package com.example.userservice.service;
 
 import com.example.userservice.dao.UserDao;
 import com.example.userservice.entity.User;
+import lombok.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,11 +31,22 @@ public class UserService {
      * @return созданный пользователь
      * @throws IllegalArgumentException если валидация не прошла
      */
-    public User createUser(String name, String email, Integer age) {
+    public User createUser(@NonNull String name, @NonNull String email, Integer age) {
         logger.info("Creating user with name: {}, email: {}, age: {}", name, email, age);
         
-        // Валидация
-        validateUserInput(name, email, age);
+        // Дополнительная валидация для пустых строк
+        if (name.trim().isEmpty()) {
+            throw new IllegalArgumentException("Name cannot be empty");
+        }
+        if (email.trim().isEmpty()) {
+            throw new IllegalArgumentException("Email cannot be empty");
+        }
+        if (!isValidEmail(email)) {
+            throw new IllegalArgumentException("Invalid email format: " + email);
+        }
+        if (age != null && (age < 0 || age > 150)) {
+            throw new IllegalArgumentException("Age must be between 0 and 150");
+        }
         
         // Проверяем, существует ли пользователь с таким email
         if (userDao.existsByEmail(email)) {
@@ -65,10 +77,10 @@ public class UserService {
      * @param email email пользователя
      * @return Optional содержащий пользователя если найден
      */
-    public Optional<User> getUserByEmail(String email) {
+    public Optional<User> getUserByEmail(@NonNull String email) {
         logger.info("Getting user by email: {}", email);
-        if (email == null || email.trim().isEmpty()) {
-            throw new IllegalArgumentException("Email cannot be null or empty");
+        if (email.trim().isEmpty()) {
+            throw new IllegalArgumentException("Email cannot be empty");
         }
         return userDao.findByEmail(email);
     }
@@ -143,31 +155,6 @@ public class UserService {
         return userDao.deleteById(id);
     }
     
-    /**
-     * Валидирует ввод пользователя.
-     * 
-     * @param name имя пользователя
-     * @param email email пользователя
-     * @param age возраст пользователя
-     * @throws IllegalArgumentException если валидация не прошла
-     */
-    private void validateUserInput(String name, String email, Integer age) {
-        if (name == null || name.trim().isEmpty()) {
-            throw new IllegalArgumentException("Name cannot be null or empty");
-        }
-        
-        if (email == null || email.trim().isEmpty()) {
-            throw new IllegalArgumentException("Email cannot be null or empty");
-        }
-        
-        if (!isValidEmail(email)) {
-            throw new IllegalArgumentException("Invalid email format: " + email);
-        }
-        
-        if (age != null && (age < 0 || age > 150)) {
-            throw new IllegalArgumentException("Age must be between 0 and 150");
-        }
-    }
     
     /**
      * Простая валидация email.

@@ -75,3 +75,8 @@ echo 1. Install Maven: https://maven.apache.org/download.cgi
 echo 2. Run: mvn clean compile exec:java -Dexec.mainClass="com.example.userservice.UserServiceApplication"
 echo.
 pause
+
+
+
+
+

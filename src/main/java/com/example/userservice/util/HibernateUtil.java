@@ -58,4 +58,38 @@ public class HibernateUtil {
             logger.info("Hibernate SessionFactory closed");
         }
     }
+    
+    /**
+     * Сбрасывает SessionFactory для тестирования.
+     * Используется только в тестах для переинициализации с новыми настройками.
+     */
+    public static void reset() {
+        if (sessionFactory != null && !sessionFactory.isClosed()) {
+            sessionFactory.close();
+            logger.info("Hibernate SessionFactory closed for reset");
+        }
+        sessionFactory = null;
+        
+        try {
+            // Создаем экземпляр Configuration
+            Configuration configuration = new Configuration();
+            
+            // Загружаем hibernate.cfg.xml из classpath
+            configuration.configure("hibernate.cfg.xml");
+            
+            // Строим ServiceRegistry
+            ServiceRegistry serviceRegistry = new StandardServiceRegistryBuilder()
+                    .applySettings(configuration.getProperties())
+                    .build();
+            
+            // Строим SessionFactory
+            sessionFactory = configuration.buildSessionFactory(serviceRegistry);
+            
+            logger.info("Hibernate SessionFactory reset successfully");
+            
+        } catch (Exception e) {
+            logger.error("Error resetting Hibernate SessionFactory", e);
+            throw new ExceptionInInitializerError(e);
+        }
+    }
 }

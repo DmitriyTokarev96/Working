@@ -111,7 +111,7 @@ public class UserDao {
     }
     
     /**
-     * Обновляет существующего пользователя.
+     * Обновляет существующего пользователя одним запросом.
      * 
      * @param user пользователь для обновления
      * @return обновленный пользователь
@@ -122,15 +122,23 @@ public class UserDao {
         try (Session session = sessionFactory.openSession()) {
             transaction = session.beginTransaction();
             
-            // Check if user exists
-            User existingUser = session.get(User.class, user.getId());
-            if (existingUser == null) {
+            // Используем один запрос UPDATE вместо SELECT + UPDATE
+            Query<Integer> updateQuery = session.createQuery(
+                "UPDATE User SET name = :name, email = :email, age = :age WHERE id = :id"
+            );
+            updateQuery.setParameter("name", user.getName());
+            updateQuery.setParameter("email", user.getEmail());
+            updateQuery.setParameter("age", user.getAge());
+            updateQuery.setParameter("id", user.getId());
+            
+            int updatedRows = updateQuery.executeUpdate();
+            
+            if (updatedRows == 0) {
                 throw new RuntimeException("User not found with ID: " + user.getId());
             }
             
-            session.update(user);
             transaction.commit();
-            logger.info("User updated successfully: {}", user);
+            logger.info("User updated successfully in single query: {}", user);
             return user;
         } catch (Exception e) {
             if (transaction != null) {
