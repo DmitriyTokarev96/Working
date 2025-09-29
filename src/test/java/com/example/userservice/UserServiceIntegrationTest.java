@@ -5,6 +5,7 @@ import com.example.userservice.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -17,19 +18,19 @@ import static org.assertj.core.api.Assertions.*;
  * Эти тесты проверяют полную интеграцию между Service и DAO слоями.
  */
 @DisplayName("UserService Integration Tests")
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class UserServiceIntegrationTest extends BaseTest {
     
-    private UserService userService;
+    private final UserService userService = new UserService();
     
     @BeforeEach
     void setUp() {
         setUpIsolation();
-        userService = new UserService();
     }
     
     @Test
-    @DisplayName("Полный цикл создания и получения пользователя")
-    void testFullUserLifecycle() {
+    @DisplayName("Создание пользователя")
+    void testCreateUser() {
         // Given
         String name = "Интеграционный тест";
         String email = "integration@example.com";
@@ -45,13 +46,29 @@ public class UserServiceIntegrationTest extends BaseTest {
         assertThat(createdUser.getEmail()).isEqualTo(email);
         assertThat(createdUser.getAge()).isEqualTo(age);
         assertThat(createdUser.getCreatedAt()).isNotNull();
+    }
+    
+    @Test
+    @DisplayName("Получение пользователя по ID")
+    void testGetUserById() {
+        // Given
+        User createdUser = userService.createUser("Тест ID", "testid@example.com", 25);
         
         // When - получаем пользователя по ID
         Optional<User> foundById = userService.getUserById(createdUser.getId());
         
         // Then
         assertThat(foundById).isPresent();
-        assertThat(foundById.get().getName()).isEqualTo(name);
+        assertThat(foundById.get().getName()).isEqualTo("Тест ID");
+        assertThat(foundById.get().getId()).isEqualTo(createdUser.getId());
+    }
+    
+    @Test
+    @DisplayName("Получение пользователя по email")
+    void testGetUserByEmail() {
+        // Given
+        String email = "testemail@example.com";
+        User createdUser = userService.createUser("Тест Email", email, 25);
         
         // When - получаем пользователя по email
         Optional<User> foundByEmail = userService.getUserByEmail(email);
@@ -59,6 +76,14 @@ public class UserServiceIntegrationTest extends BaseTest {
         // Then
         assertThat(foundByEmail).isPresent();
         assertThat(foundByEmail.get().getId()).isEqualTo(createdUser.getId());
+        assertThat(foundByEmail.get().getName()).isEqualTo("Тест Email");
+    }
+    
+    @Test
+    @DisplayName("Обновление пользователя")
+    void testUpdateUser() {
+        // Given
+        User createdUser = userService.createUser("Оригинальное имя", "update@example.com", 25);
         
         // When - обновляем пользователя
         User updatedUser = userService.updateUser(createdUser.getId(), "Обновленное имя", null, 31);
@@ -66,6 +91,14 @@ public class UserServiceIntegrationTest extends BaseTest {
         // Then
         assertThat(updatedUser.getName()).isEqualTo("Обновленное имя");
         assertThat(updatedUser.getAge()).isEqualTo(31);
+        assertThat(updatedUser.getEmail()).isEqualTo("update@example.com"); // не изменилось
+    }
+    
+    @Test
+    @DisplayName("Удаление пользователя")
+    void testDeleteUser() {
+        // Given
+        User createdUser = userService.createUser("Для удаления", "delete@example.com", 25);
         
         // When - удаляем пользователя
         boolean deleted = userService.deleteUser(createdUser.getId());
@@ -104,8 +137,8 @@ public class UserServiceIntegrationTest extends BaseTest {
     }
     
     @Test
-    @DisplayName("Тест работы с множественными пользователями")
-    void testMultipleUsers() {
+    @DisplayName("Получение всех пользователей")
+    void testGetAllUsers() {
         // Given - создаем несколько пользователей
         User user1 = userService.createUser("Пользователь 1", "user1@example.com", 25);
         User user2 = userService.createUser("Пользователь 2", "user2@example.com", 30);
@@ -118,16 +151,23 @@ public class UserServiceIntegrationTest extends BaseTest {
         assertThat(allUsers).hasSize(3);
         assertThat(allUsers).extracting(User::getName)
                 .containsExactlyInAnyOrder("Пользователь 1", "Пользователь 2", "Пользователь 3");
-        
-        // When - проверяем уникальность email
-        assertThatThrownBy(() -> userService.createUser("Дубликат", "user1@example.com", 25))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("User with email user1@example.com already exists");
     }
     
     @Test
-    @DisplayName("Тест частичного обновления пользователя")
-    void testPartialUserUpdate() {
+    @DisplayName("Проверка уникальности email")
+    void testEmailUniqueness() {
+        // Given - создаем пользователя
+        userService.createUser("Первый пользователь", "unique@example.com", 25);
+        
+        // When & Then - проверяем уникальность email
+        assertThatThrownBy(() -> userService.createUser("Дубликат", "unique@example.com", 30))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("User with email unique@example.com already exists");
+    }
+    
+    @Test
+    @DisplayName("Частичное обновление - только имя")
+    void testPartialUpdateName() {
         // Given
         User user = userService.createUser("Оригинальное имя", "original@example.com", 25);
         
@@ -138,13 +178,38 @@ public class UserServiceIntegrationTest extends BaseTest {
         assertThat(updatedUser.getName()).isEqualTo("Новое имя");
         assertThat(updatedUser.getEmail()).isEqualTo("original@example.com"); // не изменилось
         assertThat(updatedUser.getAge()).isEqualTo(25); // не изменилось
+    }
+    
+    @Test
+    @DisplayName("Частичное обновление - только возраст")
+    void testPartialUpdateAge() {
+        // Given
+        User user = userService.createUser("Тест возраст", "age@example.com", 25);
         
         // When - обновляем только возраст
         User updatedAge = userService.updateUser(user.getId(), null, null, 30);
         
         // Then
-        assertThat(updatedAge.getName()).isEqualTo("Новое имя"); // не изменилось
-        assertThat(updatedAge.getEmail()).isEqualTo("original@example.com"); // не изменилось
+        assertThat(updatedAge.getName()).isEqualTo("Тест возраст"); // не изменилось
+        assertThat(updatedAge.getEmail()).isEqualTo("age@example.com"); // не изменилось
         assertThat(updatedAge.getAge()).isEqualTo(30); // изменилось
     }
+    
+    @Test
+    @DisplayName("Частичное обновление - только email")
+    void testPartialUpdateEmail() {
+        // Given
+        User user = userService.createUser("Тест email", "old@example.com", 25);
+        
+        // When - обновляем только email
+        User updatedEmail = userService.updateUser(user.getId(), null, "new@example.com", null);
+        
+        // Then
+        assertThat(updatedEmail.getName()).isEqualTo("Тест email"); // не изменилось
+        assertThat(updatedEmail.getEmail()).isEqualTo("new@example.com"); // изменилось
+        assertThat(updatedEmail.getAge()).isEqualTo(25); // не изменилось
+    }
 }
+
+
+

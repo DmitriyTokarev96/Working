@@ -1,8 +1,12 @@
 package com.example.userservice;
 
+import com.example.userservice.dao.UserDao;
+import com.example.userservice.util.HibernateUtil;
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
+import org.hibernate.Transaction;
+import org.hibernate.query.Query;
 import org.junit.jupiter.api.TestInstance;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
 /**
  * Базовый класс для тестов с общими настройками изоляции.
@@ -12,27 +16,58 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 public abstract class BaseTest {
 
     /**
+     * Конструктор по умолчанию.
+     */
+    protected BaseTest() {
+        // Пустой конструктор
+    }
+
+    /**
      * Настройка изоляции для каждого тестового класса.
-     * Каждый тестовый класс выполняется в отдельном контексте.
+     * Очищает записи в таблице User перед каждым тестом.
      */
     protected void setUpIsolation() {
-        // Очистка системных свойств для изоляции
-        System.clearProperty("hibernate.connection.url");
-        System.clearProperty("hibernate.connection.username");
-        System.clearProperty("hibernate.connection.password");
-        System.clearProperty("hibernate.connection.driver_class");
-        System.clearProperty("hibernate.dialect");
-        System.clearProperty("hibernate.hbm2ddl.auto");
+        clearUserTable();
     }
 
     /**
      * Очистка после тестов для обеспечения изоляции.
+     * Очищает записи в таблице User после тестов.
      */
     protected void tearDownIsolation() {
-        // Очистка системных свойств
-        setUpIsolation();
+        clearUserTable();
+    }
+    
+    /**
+     * Очищает все записи из таблицы User.
+     * Используется для изоляции тестов.
+     */
+    private void clearUserTable() {
+        SessionFactory sessionFactory = HibernateUtil.getSessionFactory();
+        Transaction transaction = null;
         
-        // Дополнительная очистка при необходимости
-        System.gc(); // Принудительная сборка мусора
+        try (Session session = sessionFactory.openSession()) {
+            transaction = session.beginTransaction();
+            
+            // Удаляем все записи из таблицы User
+            Query<?> deleteQuery = session.createQuery("DELETE FROM User");
+            int deletedCount = deleteQuery.executeUpdate();
+            
+            transaction.commit();
+            
+            if (deletedCount > 0) {
+                System.out.println("Cleared " + deletedCount + " users from database");
+            }
+            
+        } catch (Exception e) {
+            if (transaction != null) {
+                transaction.rollback();
+            }
+            System.err.println("Error clearing user table: " + e.getMessage());
+            // Не выбрасываем исключение, чтобы не нарушить выполнение тестов
+        }
     }
 }
+
+
+

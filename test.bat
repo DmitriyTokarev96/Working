@@ -31,3 +31,6 @@ if %errorlevel% neq 0 (
 echo.
 echo Все тесты выполнены успешно!
 pause
+
+
+
