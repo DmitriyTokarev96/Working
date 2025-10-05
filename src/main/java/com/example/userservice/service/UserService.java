@@ -1,142 +1,141 @@
 package com.example.userservice.service;
 
-import com.example.userservice.dao.UserDao;
+import com.example.userservice.dto.CreateUserDto;
+import com.example.userservice.dto.UpdateUserDto;
+import com.example.userservice.dto.UserDto;
 import com.example.userservice.entity.User;
-import lombok.NonNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.example.userservice.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * Сервисный класс для бизнес-логики пользователей.
  * Предоставляет высокоуровневые операции для управления пользователями.
  */
+@Slf4j
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class UserService {
     
-    private static final Logger logger = LoggerFactory.getLogger(UserService.class);
-    private final UserDao userDao;
-    
-    public UserService() {
-        this.userDao = new UserDao();
-    }
+    private final UserRepository userRepository;
     
     /**
-     * Создает нового пользователя с валидацией.
+     * Создает нового пользователя.
      * 
-     * @param name имя пользователя
-     * @param email email пользователя
-     * @param age возраст пользователя
-     * @return созданный пользователь
-     * @throws IllegalArgumentException если валидация не прошла
+     * @param createUserDto данные для создания пользователя
+     * @return созданный пользователь в виде DTO
+     * @throws IllegalArgumentException если пользователь с таким email уже существует
      */
-    public User createUser(@NonNull String name, @NonNull String email, Integer age) {
-        logger.info("Creating user with name: {}, email: {}, age: {}", name, email, age);
-        
-        // Дополнительная валидация для пустых строк
-        if (name.trim().isEmpty()) {
-            throw new IllegalArgumentException("Name cannot be empty");
-        }
-        if (email.trim().isEmpty()) {
-            throw new IllegalArgumentException("Email cannot be empty");
-        }
-        if (!isValidEmail(email)) {
-            throw new IllegalArgumentException("Invalid email format: " + email);
-        }
-        if (age != null && (age < 0 || age > 150)) {
-            throw new IllegalArgumentException("Age must be between 0 and 150");
-        }
+    @Transactional
+    public UserDto createUser(CreateUserDto createUserDto) {
+        log.info("Creating user with name: {}, email: {}, age: {}", 
+                createUserDto.getName(), createUserDto.getEmail(), createUserDto.getAge());
         
         // Проверяем, существует ли пользователь с таким email
-        if (userDao.existsByEmail(email)) {
-            throw new IllegalArgumentException("User with email " + email + " already exists");
+        if (userRepository.existsByEmail(createUserDto.getEmail())) {
+            throw new IllegalArgumentException("User with email " + createUserDto.getEmail() + " already exists");
         }
         
-        User user = new User(name, email, age);
-        return userDao.create(user);
+        User user = User.builder()
+                .name(createUserDto.getName())
+                .email(createUserDto.getEmail())
+                .age(createUserDto.getAge())
+                .build();
+        
+        User savedUser = userRepository.save(user);
+        return convertToDto(savedUser);
     }
     
     /**
      * Получает пользователя по ID.
      * 
      * @param id ID пользователя
-     * @return Optional содержащий пользователя если найден
+     * @return Optional содержащий пользователя в виде DTO если найден
      */
-    public Optional<User> getUserById(Long id) {
-        logger.info("Getting user by ID: {}", id);
+    public Optional<UserDto> getUserById(Long id) {
+        log.info("Getting user by ID: {}", id);
         if (id == null || id <= 0) {
             throw new IllegalArgumentException("Invalid user ID: " + id);
         }
-        return userDao.findById(id);
+        return userRepository.findById(id)
+                .map(this::convertToDto);
     }
     
     /**
      * Получает пользователя по email.
      * 
      * @param email email пользователя
-     * @return Optional содержащий пользователя если найден
+     * @return Optional содержащий пользователя в виде DTO если найден
      */
-    public Optional<User> getUserByEmail(@NonNull String email) {
-        logger.info("Getting user by email: {}", email);
-        if (email.trim().isEmpty()) {
+    public Optional<UserDto> getUserByEmail(String email) {
+        log.info("Getting user by email: {}", email);
+        if (email == null || email.trim().isEmpty()) {
             throw new IllegalArgumentException("Email cannot be empty");
         }
-        return userDao.findByEmail(email);
+        return userRepository.findByEmail(email)
+                .map(this::convertToDto);
     }
     
     /**
      * Получает всех пользователей.
      * 
-     * @return список всех пользователей
+     * @return список всех пользователей в виде DTO
      */
-    public List<User> getAllUsers() {
-        logger.info("Getting all users");
-        return userDao.findAll();
+    public List<UserDto> getAllUsers() {
+        log.info("Getting all users");
+        return userRepository.findAll()
+                .stream()
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
     }
     
     /**
      * Обновляет информацию о пользователе.
      * 
      * @param id ID пользователя
-     * @param name новое имя (опционально)
-     * @param email новый email (опционально)
-     * @param age новый возраст (опционально)
-     * @return обновленный пользователь
+     * @param updateUserDto данные для обновления
+     * @return обновленный пользователь в виде DTO
      * @throws IllegalArgumentException если пользователь не найден или валидация не прошла
      */
-    public User updateUser(Long id, String name, String email, Integer age) {
-        logger.info("Updating user with ID: {}, name: {}, email: {}, age: {}", id, name, email, age);
+    @Transactional
+    public UserDto updateUser(Long id, UpdateUserDto updateUserDto) {
+        log.info("Updating user with ID: {}, data: {}", id, updateUserDto);
         
         if (id == null || id <= 0) {
             throw new IllegalArgumentException("Invalid user ID: " + id);
         }
         
         // Получаем существующего пользователя
-        User existingUser = userDao.findById(id)
+        User existingUser = userRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + id));
         
         // Обновляем поля, если они предоставлены
-        if (name != null && !name.trim().isEmpty()) {
-            existingUser.setName(name.trim());
+        if (updateUserDto.getName() != null && !updateUserDto.getName().trim().isEmpty()) {
+            existingUser.setName(updateUserDto.getName().trim());
         }
         
-        if (email != null && !email.trim().isEmpty()) {
+        if (updateUserDto.getEmail() != null && !updateUserDto.getEmail().trim().isEmpty()) {
             // Проверяем, отличается ли новый email и не занят ли он
-            if (!email.equals(existingUser.getEmail()) && userDao.existsByEmail(email)) {
-                throw new IllegalArgumentException("User with email " + email + " already exists");
+            if (!updateUserDto.getEmail().equals(existingUser.getEmail()) && 
+                userRepository.existsByEmailAndIdNot(updateUserDto.getEmail(), id)) {
+                throw new IllegalArgumentException("User with email " + updateUserDto.getEmail() + " already exists");
             }
-            existingUser.setEmail(email.trim());
+            existingUser.setEmail(updateUserDto.getEmail().trim());
         }
         
-        if (age != null) {
-            if (age < 0 || age > 150) {
-                throw new IllegalArgumentException("Age must be between 0 and 150");
-            }
-            existingUser.setAge(age);
+        if (updateUserDto.getAge() != null) {
+            existingUser.setAge(updateUserDto.getAge());
         }
         
-        return userDao.update(existingUser);
+        User updatedUser = userRepository.save(existingUser);
+        return convertToDto(updatedUser);
     }
     
     /**
@@ -145,24 +144,35 @@ public class UserService {
      * @param id ID пользователя
      * @return true если пользователь был удален, false если не найден
      */
+    @Transactional
     public boolean deleteUser(Long id) {
-        logger.info("Deleting user with ID: {}", id);
+        log.info("Deleting user with ID: {}", id);
         
         if (id == null || id <= 0) {
             throw new IllegalArgumentException("Invalid user ID: " + id);
         }
         
-        return userDao.deleteById(id);
+        if (userRepository.existsById(id)) {
+            userRepository.deleteById(id);
+            return true;
+        }
+        return false;
     }
     
-    
     /**
-     * Простая валидация email.
+     * Конвертирует User entity в UserDto.
      * 
-     * @param email email для валидации
-     * @return true если email валиден
+     * @param user пользователь
+     * @return DTO пользователя
      */
-    private boolean isValidEmail(String email) {
-        return email.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");
+    private UserDto convertToDto(User user) {
+        return UserDto.builder()
+                .id(user.getId())
+                .name(user.getName())
+                .email(user.getEmail())
+                .age(user.getAge())
+                .createdAt(user.getCreatedAt())
+                .updatedAt(user.getUpdatedAt())
+                .build();
     }
 }

@@ -1,50 +1,64 @@
 package com.example.userservice;
 
+import com.example.userservice.dto.CreateUserDto;
+import com.example.userservice.dto.UpdateUserDto;
+import com.example.userservice.dto.UserDto;
 import com.example.userservice.entity.User;
+import com.example.userservice.repository.UserRepository;
 import com.example.userservice.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
 
 /**
- * Интеграционные тесты для UserService с реальной H2 in-memory базой данных.
- * Эти тесты проверяют полную интеграцию между Service и DAO слоями.
+ * Интеграционные тесты для UserService с Spring Data JPA.
+ * Эти тесты проверяют полную интеграцию между Service и Repository слоями.
  */
 @DisplayName("UserService Integration Tests")
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public class UserServiceIntegrationTest extends BaseTest {
+@SpringBootTest
+@ActiveProfiles("test")
+@Transactional
+public class UserServiceIntegrationTest {
     
-    private final UserService userService = new UserService();
+    @Autowired
+    private UserService userService;
+    
+    @Autowired
+    private UserRepository userRepository;
     
     @BeforeEach
     void setUp() {
-        setUpIsolation();
+        userRepository.deleteAll();
     }
     
     @Test
     @DisplayName("Создание пользователя")
     void testCreateUser() {
         // Given
-        String name = "Интеграционный тест";
-        String email = "integration@example.com";
-        Integer age = 30;
+        CreateUserDto createUserDto = CreateUserDto.builder()
+                .name("Интеграционный тест")
+                .email("integration@example.com")
+                .age(30)
+                .build();
         
         // When - создаем пользователя
-        User createdUser = userService.createUser(name, email, age);
+        UserDto createdUser = userService.createUser(createUserDto);
         
         // Then
         assertThat(createdUser).isNotNull();
         assertThat(createdUser.getId()).isNotNull();
-        assertThat(createdUser.getName()).isEqualTo(name);
-        assertThat(createdUser.getEmail()).isEqualTo(email);
-        assertThat(createdUser.getAge()).isEqualTo(age);
+        assertThat(createdUser.getName()).isEqualTo("Интеграционный тест");
+        assertThat(createdUser.getEmail()).isEqualTo("integration@example.com");
+        assertThat(createdUser.getAge()).isEqualTo(30);
         assertThat(createdUser.getCreatedAt()).isNotNull();
     }
     
@@ -52,10 +66,15 @@ public class UserServiceIntegrationTest extends BaseTest {
     @DisplayName("Получение пользователя по ID")
     void testGetUserById() {
         // Given
-        User createdUser = userService.createUser("Тест ID", "testid@example.com", 25);
+        CreateUserDto createUserDto = CreateUserDto.builder()
+                .name("Тест ID")
+                .email("testid@example.com")
+                .age(25)
+                .build();
+        UserDto createdUser = userService.createUser(createUserDto);
         
         // When - получаем пользователя по ID
-        Optional<User> foundById = userService.getUserById(createdUser.getId());
+        Optional<UserDto> foundById = userService.getUserById(createdUser.getId());
         
         // Then
         assertThat(foundById).isPresent();
@@ -68,10 +87,15 @@ public class UserServiceIntegrationTest extends BaseTest {
     void testGetUserByEmail() {
         // Given
         String email = "testemail@example.com";
-        User createdUser = userService.createUser("Тест Email", email, 25);
+        CreateUserDto createUserDto = CreateUserDto.builder()
+                .name("Тест Email")
+                .email(email)
+                .age(25)
+                .build();
+        UserDto createdUser = userService.createUser(createUserDto);
         
         // When - получаем пользователя по email
-        Optional<User> foundByEmail = userService.getUserByEmail(email);
+        Optional<UserDto> foundByEmail = userService.getUserByEmail(email);
         
         // Then
         assertThat(foundByEmail).isPresent();
@@ -83,10 +107,20 @@ public class UserServiceIntegrationTest extends BaseTest {
     @DisplayName("Обновление пользователя")
     void testUpdateUser() {
         // Given
-        User createdUser = userService.createUser("Оригинальное имя", "update@example.com", 25);
+        CreateUserDto createUserDto = CreateUserDto.builder()
+                .name("Оригинальное имя")
+                .email("update@example.com")
+                .age(25)
+                .build();
+        UserDto createdUser = userService.createUser(createUserDto);
+        
+        UpdateUserDto updateUserDto = UpdateUserDto.builder()
+                .name("Обновленное имя")
+                .age(31)
+                .build();
         
         // When - обновляем пользователя
-        User updatedUser = userService.updateUser(createdUser.getId(), "Обновленное имя", null, 31);
+        UserDto updatedUser = userService.updateUser(createdUser.getId(), updateUserDto);
         
         // Then
         assertThat(updatedUser.getName()).isEqualTo("Обновленное имя");
@@ -98,7 +132,12 @@ public class UserServiceIntegrationTest extends BaseTest {
     @DisplayName("Удаление пользователя")
     void testDeleteUser() {
         // Given
-        User createdUser = userService.createUser("Для удаления", "delete@example.com", 25);
+        CreateUserDto createUserDto = CreateUserDto.builder()
+                .name("Для удаления")
+                .email("delete@example.com")
+                .age(25)
+                .build();
+        UserDto createdUser = userService.createUser(createUserDto);
         
         // When - удаляем пользователя
         boolean deleted = userService.deleteUser(createdUser.getId());
@@ -107,7 +146,7 @@ public class UserServiceIntegrationTest extends BaseTest {
         assertThat(deleted).isTrue();
         
         // When - проверяем, что пользователь удален
-        Optional<User> deletedUser = userService.getUserById(createdUser.getId());
+        Optional<UserDto> deletedUser = userService.getUserById(createdUser.getId());
         
         // Then
         assertThat(deletedUser).isEmpty();
@@ -116,22 +155,33 @@ public class UserServiceIntegrationTest extends BaseTest {
     @Test
     @DisplayName("Тест валидации при создании пользователя")
     void testValidationOnUserCreation() {
-        // When & Then - тест с null именем
-        assertThatThrownBy(() -> userService.createUser(null, "test@example.com", 25))
-                .isInstanceOf(NullPointerException.class);
-        
         // When & Then - тест с пустым именем
-        assertThatThrownBy(() -> userService.createUser("", "test@example.com", 25))
+        CreateUserDto invalidNameDto = CreateUserDto.builder()
+                .name("")
+                .email("test@example.com")
+                .age(25)
+                .build();
+        assertThatThrownBy(() -> userService.createUser(invalidNameDto))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Name cannot be empty");
         
         // When & Then - тест с невалидным email
-        assertThatThrownBy(() -> userService.createUser("Test", "invalid-email", 25))
+        CreateUserDto invalidEmailDto = CreateUserDto.builder()
+                .name("Test")
+                .email("invalid-email")
+                .age(25)
+                .build();
+        assertThatThrownBy(() -> userService.createUser(invalidEmailDto))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Invalid email format: invalid-email");
         
         // When & Then - тест с невалидным возрастом
-        assertThatThrownBy(() -> userService.createUser("Test", "test@example.com", -1))
+        CreateUserDto invalidAgeDto = CreateUserDto.builder()
+                .name("Test")
+                .email("test@example.com")
+                .age(-1)
+                .build();
+        assertThatThrownBy(() -> userService.createUser(invalidAgeDto))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Age must be between 0 and 150");
     }
@@ -140,16 +190,32 @@ public class UserServiceIntegrationTest extends BaseTest {
     @DisplayName("Получение всех пользователей")
     void testGetAllUsers() {
         // Given - создаем несколько пользователей
-        User user1 = userService.createUser("Пользователь 1", "user1@example.com", 25);
-        User user2 = userService.createUser("Пользователь 2", "user2@example.com", 30);
-        User user3 = userService.createUser("Пользователь 3", "user3@example.com", 35);
+        CreateUserDto user1Dto = CreateUserDto.builder()
+                .name("Пользователь 1")
+                .email("user1@example.com")
+                .age(25)
+                .build();
+        CreateUserDto user2Dto = CreateUserDto.builder()
+                .name("Пользователь 2")
+                .email("user2@example.com")
+                .age(30)
+                .build();
+        CreateUserDto user3Dto = CreateUserDto.builder()
+                .name("Пользователь 3")
+                .email("user3@example.com")
+                .age(35)
+                .build();
+        
+        userService.createUser(user1Dto);
+        userService.createUser(user2Dto);
+        userService.createUser(user3Dto);
         
         // When - получаем всех пользователей
-        List<User> allUsers = userService.getAllUsers();
+        List<UserDto> allUsers = userService.getAllUsers();
         
         // Then
         assertThat(allUsers).hasSize(3);
-        assertThat(allUsers).extracting(User::getName)
+        assertThat(allUsers).extracting(UserDto::getName)
                 .containsExactlyInAnyOrder("Пользователь 1", "Пользователь 2", "Пользователь 3");
     }
     
@@ -157,10 +223,21 @@ public class UserServiceIntegrationTest extends BaseTest {
     @DisplayName("Проверка уникальности email")
     void testEmailUniqueness() {
         // Given - создаем пользователя
-        userService.createUser("Первый пользователь", "unique@example.com", 25);
+        CreateUserDto firstUserDto = CreateUserDto.builder()
+                .name("Первый пользователь")
+                .email("unique@example.com")
+                .age(25)
+                .build();
+        userService.createUser(firstUserDto);
+        
+        CreateUserDto duplicateUserDto = CreateUserDto.builder()
+                .name("Дубликат")
+                .email("unique@example.com")
+                .age(30)
+                .build();
         
         // When & Then - проверяем уникальность email
-        assertThatThrownBy(() -> userService.createUser("Дубликат", "unique@example.com", 30))
+        assertThatThrownBy(() -> userService.createUser(duplicateUserDto))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("User with email unique@example.com already exists");
     }
@@ -169,10 +246,19 @@ public class UserServiceIntegrationTest extends BaseTest {
     @DisplayName("Частичное обновление - только имя")
     void testPartialUpdateName() {
         // Given
-        User user = userService.createUser("Оригинальное имя", "original@example.com", 25);
+        CreateUserDto createUserDto = CreateUserDto.builder()
+                .name("Оригинальное имя")
+                .email("original@example.com")
+                .age(25)
+                .build();
+        UserDto user = userService.createUser(createUserDto);
+        
+        UpdateUserDto updateUserDto = UpdateUserDto.builder()
+                .name("Новое имя")
+                .build();
         
         // When - обновляем только имя
-        User updatedUser = userService.updateUser(user.getId(), "Новое имя", null, null);
+        UserDto updatedUser = userService.updateUser(user.getId(), updateUserDto);
         
         // Then
         assertThat(updatedUser.getName()).isEqualTo("Новое имя");
@@ -184,10 +270,19 @@ public class UserServiceIntegrationTest extends BaseTest {
     @DisplayName("Частичное обновление - только возраст")
     void testPartialUpdateAge() {
         // Given
-        User user = userService.createUser("Тест возраст", "age@example.com", 25);
+        CreateUserDto createUserDto = CreateUserDto.builder()
+                .name("Тест возраст")
+                .email("age@example.com")
+                .age(25)
+                .build();
+        UserDto user = userService.createUser(createUserDto);
+        
+        UpdateUserDto updateUserDto = UpdateUserDto.builder()
+                .age(30)
+                .build();
         
         // When - обновляем только возраст
-        User updatedAge = userService.updateUser(user.getId(), null, null, 30);
+        UserDto updatedAge = userService.updateUser(user.getId(), updateUserDto);
         
         // Then
         assertThat(updatedAge.getName()).isEqualTo("Тест возраст"); // не изменилось
@@ -199,10 +294,19 @@ public class UserServiceIntegrationTest extends BaseTest {
     @DisplayName("Частичное обновление - только email")
     void testPartialUpdateEmail() {
         // Given
-        User user = userService.createUser("Тест email", "old@example.com", 25);
+        CreateUserDto createUserDto = CreateUserDto.builder()
+                .name("Тест email")
+                .email("old@example.com")
+                .age(25)
+                .build();
+        UserDto user = userService.createUser(createUserDto);
+        
+        UpdateUserDto updateUserDto = UpdateUserDto.builder()
+                .email("new@example.com")
+                .build();
         
         // When - обновляем только email
-        User updatedEmail = userService.updateUser(user.getId(), null, "new@example.com", null);
+        UserDto updatedEmail = userService.updateUser(user.getId(), updateUserDto);
         
         // Then
         assertThat(updatedEmail.getName()).isEqualTo("Тест email"); // не изменилось
