@@ -1,5 +1,6 @@
 package com.example.userservice.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -18,15 +19,19 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Schema(description = "Data for creating a new user")
 public class CreateUserDto {
     
+    @Schema(description = "Full name of the user", example = "John Doe", required = true)
     @NotBlank(message = "Name is required")
     private String name;
     
+    @Schema(description = "Email address of the user", example = "john.doe@example.com", required = true)
     @NotBlank(message = "Email is required")
     @Email(message = "Invalid email format")
     private String email;
     
+    @Schema(description = "Age of the user", example = "25", minimum = "0", maximum = "150", required = true)
     @NotNull(message = "Age is required")
     @Min(value = 0, message = "Age must be at least 0")
     @Max(value = 150, message = "Age must be at most 150")

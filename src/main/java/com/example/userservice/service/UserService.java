@@ -25,6 +25,7 @@ import java.util.stream.Collectors;
 public class UserService {
     
     private final UserRepository userRepository;
+    private final EventPublisherService eventPublisherService;
     
     /**
      * Создает нового пользователя.
@@ -50,6 +51,10 @@ public class UserService {
                 .build();
         
         User savedUser = userRepository.save(user);
+        
+        // Отправляем событие о создании пользователя
+        eventPublisherService.publishUserEvent("CREATE", savedUser.getEmail(), savedUser.getName());
+        
         return convertToDto(savedUser);
     }
     
@@ -153,8 +158,14 @@ public class UserService {
         }
         
         if (userRepository.existsById(id)) {
-            userRepository.deleteById(id);
-            return true;
+            // Получаем данные пользователя перед удалением для отправки события
+            User userToDelete = userRepository.findById(id).orElse(null);
+            if (userToDelete != null) {
+                userRepository.deleteById(id);
+                // Отправляем событие об удалении пользователя
+                eventPublisherService.publishUserEvent("DELETE", userToDelete.getEmail(), userToDelete.getName());
+                return true;
+            }
         }
         return false;
     }
